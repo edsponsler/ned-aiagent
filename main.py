@@ -1,8 +1,12 @@
+import argparse
 import os
+
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-import argparse
+
+from functions.call_function import available_functions
+from prompts import SYSTEM_PROMPT
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -17,11 +21,16 @@ args = parser.parse_args()
 
 messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
 
+
 def generate_content(client, messages):
     return client.models.generate_content(
         model="gemini-3.1-flash-lite",
-        contents=messages
+        contents=messages,
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=SYSTEM_PROMPT
+        ),
     )
+
 
 def main():
     response = generate_content(client, messages)
@@ -33,7 +42,12 @@ def main():
     else:
         raise RuntimeError("No usage metadata returned")
 
+    if response.function_calls:
+        for function_call in response.function_calls:
+            print(f"\nCalling function: {function_call.name}({function_call.args})")
+
     print(f"\n{response.text}")
+
 
 if __name__ == "__main__":
     main()
