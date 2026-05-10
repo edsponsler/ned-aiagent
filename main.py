@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from functions.call_function import available_functions, call_function
+from functions import wrappers
 from prompts import SYSTEM_PROMPT
 
 load_dotenv()
@@ -18,66 +18,37 @@ parser = argparse.ArgumentParser(description="NEDs AI Agent")
 parser.add_argument("user_prompt", type=str, help="The prompt to send to the AI")
 parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 args = parser.parse_args()
-# Now we can access 'args.user_prompt'
 
-messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
-
-
-def generate_content(client, messages):
-    return client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=SYSTEM_PROMPT
-        ),
-    )
+# Configure the wrappers module
+wrappers.VERBOSE = args.verbose
+wrappers.WORKING_DIRECTORY = "./calculator"
 
 
 def main():
-    for _ in range(20):
-        # call the model, handle responses, etc.
-        response = generate_content(client, messages)
-        if response.candidates:
-            for candidate in response.candidates:
-                messages.append(candidate.content)
+    # Utilizing SDK chats component to manage the conversation history natively.
+    chat = client.chats.create(
+        model="gemini-2.5-flash",
+        config=types.GenerateContentConfig(
+            tools=wrappers.tools_list,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False, maximum_remote_calls=20),
+            system_instruction=SYSTEM_PROMPT,
+        ),
+    )
 
-        if response.usage_metadata:
-            if args.verbose:
-                print(f"User prompt: {messages}")
-                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-                print(
-                    f"Response tokens: {response.usage_metadata.candidates_token_count}"
-                )
-        else:
-            raise RuntimeError("No usage metadata returned")
+    if args.verbose:
+        print(f"User prompt: {args.user_prompt}")
 
-        if response.function_calls:
-            function_responses = []
-            for function_call in response.function_calls:
-                function_call_result = call_function(function_call)
-                if not function_call_result.parts:
-                    raise Exception("No parts returned from function call")
+    response = chat.send_message(args.user_prompt)
 
-                if not function_call_result.parts[0].function_response:
-                    raise Exception("No function response in parts")
-
-                if not function_call_result.parts[0].function_response.response:
-                    raise Exception("No response in function response")
-
-                function_responses.append(function_call_result.parts[0])
-
-                if args.verbose:
-                    print(
-                        f"-> {function_call_result.parts[0].function_response.response}"
-                    )
-            messages.append(types.Content(role="user", parts=function_responses))
-        else:
-            print(f"\n{response.text}")
-            break
-
+    if response.usage_metadata:
+        if args.verbose:
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
     else:
-        print("Error: Maximum number of iterations reached without a final response.")
-        sys.exit(1)
+        if args.verbose:
+            print("Warning: No usage metadata returned")
+
+    print(f"\n{response.text}")
 
 
 if __name__ == "__main__":
