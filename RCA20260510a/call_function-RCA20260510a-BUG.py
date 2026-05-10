@@ -34,12 +34,9 @@ def call_function(function_call, verbose=False):
         return types.Content(
             role="tool",
             parts=[
-                types.Part(
-                    function_response=types.FunctionResponse(
-                        id=function_call.id,
-                        name=function_name,
-                        response={"error": f"Unknown function: {function_name}"},
-                    )
+                types.Part.from_function_response(
+                    name=function_name,
+                    response={"error": f"Unknown function: {function_name}"},
                 )
             ],
         )
@@ -48,17 +45,15 @@ def call_function(function_call, verbose=False):
 
     args["working_directory"] = "./calculator"
 
+    # Call the function with the provided arguments
     function_result = function_map[function_name](**args)
 
     return types.Content(
         role="tool",
         parts=[
-            types.Part(
-                function_response=types.FunctionResponse(
-                    id=function_call.id,
-                    name=function_name,
-                    response={"result": function_result},
-                )
+            types.Part.from_function_response(
+                name=function_name,
+                response={"result": function_result},
             )
         ],
     )

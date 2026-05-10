@@ -48,6 +48,7 @@ def call_function(function_call, verbose=False):
 
     args["working_directory"] = "./calculator"
 
+    # Call the function with the provided arguments
     function_result = function_map[function_name](**args)
 
     return types.Content(
