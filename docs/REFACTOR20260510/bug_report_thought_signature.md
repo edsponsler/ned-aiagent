@@ -5,7 +5,7 @@
 **Impact:** Critical blocking issue for Gemini 3.1 agent workflows. Forces developers to downgrade to Gemini 2.5.  
 
 ## Overview
-When utilizing `gemini-3.1-flash` or `gemini-3.1-flash-lite` with the `google-genai` Python SDK, multi-turn function calling (both manual and via `AutomaticFunctionCallingConfig`) fails. The API rejects the subsequent tool response request with the following error:
+When utilizing `gemini-3.1-flash-lite` with the `google-genai` Python SDK, multi-turn function calling (both manual and via `AutomaticFunctionCallingConfig`) fails. The API rejects the subsequent tool response request with the following error:
 `400 INVALID_ARGUMENT: Function call is missing a thought_signature in functionCall parts. This is required for tools to work correctly...`
 
 ## Root Cause Analysis: Core Serialization Layer
